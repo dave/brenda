@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/dave/brenda.svg?branch=master)](https://travis-ci.org/dave/brenda) [![Go Report Card](https://goreportcard.com/badge/github.com/dave/brenda)](https://goreportcard.com/report/github.com/dave/brenda) [![codecov](https://codecov.io/gh/dave/brenda/branch/master/graph/badge.svg)](https://codecov.io/gh/dave/brenda)
+
 # Brenda
 
 Brenda is a boolean logic solver.
