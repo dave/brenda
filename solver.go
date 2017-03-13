@@ -183,9 +183,9 @@ func (s *Solver) initItems(node ast.Node) error {
 				return err
 			}
 		case token.EQL, token.LSS, token.GTR, token.NEQ, token.LEQ, token.GEQ:
-			s.registerComponent(n)
+			s.registerItem(n)
 		default:
-			s.registerComponent(n)
+			s.registerItem(n)
 		}
 	case *ast.UnaryExpr:
 		if err := s.initItems(n.X); err != nil {
@@ -196,14 +196,14 @@ func (s *Solver) initItems(node ast.Node) error {
 			return err
 		}
 	case ast.Expr:
-		s.registerComponent(n)
+		s.registerItem(n)
 	default:
 		return fmt.Errorf("Unknown %T %s", node, s.sprintNode(node))
 	}
 	return nil
 }
 
-func (s *Solver) registerComponent(e ast.Expr) {
+func (s *Solver) registerItem(e ast.Expr) {
 	for _, c := range s.items {
 		if s.compare(c, e) {
 			s.itemUses[e] = use{item: c, inverted: false}
