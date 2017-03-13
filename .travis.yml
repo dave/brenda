@@ -1,0 +1,15 @@
+language: go
+go:
+    - 1.7
+go_import_path: github.com/dave/brenda/
+notificaitons:
+  email:
+    recipients: dave@brophy.uk
+    on_failure: always
+install:
+  - go get -u github.com/dave/kerr/kcov
+  - go get -t -v ./...
+script:
+  - kcov -r github.com/dave/brenda
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
