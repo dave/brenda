@@ -65,12 +65,12 @@ func (s *Solver) initFull(invert bool) {
 	s.full = out
 }
 
-// Solves the expression as true - e.g. for the main block of an if statement
+// SolveTrue solves the expression as true - e.g. for the main block of an if statement
 func (s *Solver) SolveTrue() error {
 	return s.solve(false)
 }
 
-// Solves the expression as false - e.g. for the else block of an if statement
+// SolveFalse solves the expression as false - e.g. for the else block of an if statement
 func (s *Solver) SolveFalse() error {
 	return s.solve(true)
 }
@@ -163,11 +163,10 @@ func (s *Solver) invert(node ast.Expr) ast.Expr {
 			Op: token.NOT,
 			X:  node,
 		}
-	} else {
-		return &ast.UnaryExpr{
-			Op: token.NOT,
-			X:  &ast.ParenExpr{X: node},
-		}
+	}
+	return &ast.UnaryExpr{
+		Op: token.NOT,
+		X:  &ast.ParenExpr{X: node},
 	}
 }
 
