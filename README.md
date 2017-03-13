@@ -96,7 +96,7 @@ func foo(a, b bool) {
 
 // We parse the AST
 fset := token.NewFileSet()
-f, err := parser.ParseFile(fset, "foo.go", src, parser.ParseComments)
+f, err := parser.ParseFile(fset, "foo.go", src, 0)
 if err != nil {
 	fmt.Println(err)
 	return
