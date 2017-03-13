@@ -10,7 +10,10 @@ import (
 	"reflect"
 )
 
-// NewSolver returns a new *Solver.
+// NewSolver returns a new *Solver. fset should be the AST FileSet. uses should
+// be the Uses from go/types.Info. expression is the expression to solve.
+// falseExpressions is a slice of expressions we know to be false - e.g. all
+// previous conditions that came before an else-if statement.
 func NewSolver(fset *token.FileSet, uses map[*ast.Ident]types.Object, expression ast.Expr, falseExpressions ...ast.Expr) *Solver {
 	return &Solver{
 		fset:       fset,
@@ -31,8 +34,8 @@ type Solver struct {
 	uses       map[*ast.Ident]types.Object // The Uses log from go/types.Info
 	items      []ast.Expr                  // The individual components of the full expression
 	itemUses   map[ast.Expr]use            // Information about each use of each item in the full expression
-	Components map[ast.Expr]*Result        // Results of the solve process
-	Impossible bool                        // True if this expression is impossible (Results will be nil)
+	Components map[ast.Expr]*Result        // Components is a map of all the individual components of the expression, and the results
+	Impossible bool                        // Impossible is true if this expression is impossible
 }
 
 type use struct {
@@ -40,10 +43,10 @@ type use struct {
 	inverted bool     // True if this use is the inverse of the item
 }
 
-// Result contains information about each result
+// Result contains information about each result.
 type Result struct {
-	Match   bool
-	Inverse bool
+	Match   bool // Match is true if this component must be true.
+	Inverse bool // Inverse is true if this component must be false.
 }
 
 func (s *Solver) initFull(invert bool) {
@@ -62,12 +65,16 @@ func (s *Solver) initFull(invert bool) {
 	s.full = out
 }
 
+// Solves the expression as true - e.g. for the main block of an if statement
 func (s *Solver) SolveTrue() error {
 	return s.solve(false)
 }
+
+// Solves the expression as false - e.g. for the else block of an if statement
 func (s *Solver) SolveFalse() error {
 	return s.solve(true)
 }
+
 func (s *Solver) solve(invert bool) error {
 
 	s.initFull(invert)
@@ -177,7 +184,7 @@ func (s *Solver) initItems(node ast.Node) {
 		case token.EQL, token.LSS, token.GTR, token.NEQ, token.LEQ, token.GEQ:
 			s.registerComponent(n)
 		default:
-			fmt.Printf("Unknown BinaryExpr: %s\n", s.print(node))
+			fmt.Printf("Unknown BinaryExpr: %s\n", s.sprintNode(node))
 			s.registerComponent(n)
 		}
 	case *ast.UnaryExpr:
@@ -187,7 +194,7 @@ func (s *Solver) initItems(node ast.Node) {
 	case ast.Expr:
 		s.registerComponent(n)
 	default:
-		panic(fmt.Sprintf("Unknown %T %s", node, s.print(node)))
+		panic(fmt.Sprintf("Unknown %T %s", node, s.sprintNode(node)))
 	}
 }
 
@@ -246,7 +253,7 @@ func (s *Solver) compare(an, bn ast.Node) bool {
 			return false
 		}
 	default:
-		fmt.Printf("%T %s %s\n", an, s.print(an), s.print(bn))
+		fmt.Printf("%T %s %s\n", an, s.sprintNode(an), s.sprintNode(bn))
 		return false
 	}
 	return true
@@ -268,7 +275,7 @@ func (s *Solver) execute(ex ast.Expr, inputs map[ast.Expr]bool) bool {
 		case token.NOT:
 			return !s.execute(e.X, inputs)
 		default:
-			panic(fmt.Sprintf("unknown expression %s", s.print(ex)))
+			panic(fmt.Sprintf("unknown expression %s", s.sprintNode(ex)))
 		}
 	case *ast.ParenExpr:
 		return s.execute(e.X, inputs)
@@ -280,7 +287,7 @@ func (s *Solver) execute(ex ast.Expr, inputs map[ast.Expr]bool) bool {
 func (s *Solver) evaluate(ex ast.Expr, inputs map[ast.Expr]bool) bool {
 	use, ok := s.itemUses[ex]
 	if !ok {
-		panic(fmt.Sprintf("unknown component %s", s.print(ex)))
+		panic(fmt.Sprintf("unknown component %s", s.sprintNode(ex)))
 	}
 	if use.inverted {
 		return !inputs[use.item]
@@ -288,7 +295,7 @@ func (s *Solver) evaluate(ex ast.Expr, inputs map[ast.Expr]bool) bool {
 	return inputs[use.item]
 }
 
-func (s *Solver) print(node ast.Node) string {
+func (s *Solver) sprintNode(node ast.Node) string {
 	buf := &bytes.Buffer{}
 	err := format.Node(buf, s.fset, node)
 	if err != nil {
