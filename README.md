@@ -127,43 +127,13 @@ if ifs == nil {
 	return
 }
 
-// Helper function to print AST nodes
-sprintNode := func(n ast.Node) string {
-	buf := &bytes.Buffer{}
-	err := format.Node(buf, fset, n)
-	if err != nil {
-		return err.Error()
-	}
-	return buf.String()
-}
-
-// Helper function to print results
-sprintResults := func(s *brenda.Solver) string {
-	if s.Impossible {
-		// If the expression is impossible
-		return "\t// IMPOSSIBLE"
-	}
-
-	// The results must be sorted to ensure repeatable output
-	var lines []string
-	for expr, result := range s.Components {
-		switch {
-		case result.Match:
-			lines = append(lines, fmt.Sprint("\t// ", printNode(fset, expr), " TRUE"))
-		case result.Inverse:
-			lines = append(lines, fmt.Sprint("\t// ", printNode(fset, expr), " FALSE"))
-		default:
-			lines = append(lines, fmt.Sprint("\t// ", printNode(fset, expr), " UNKNOWN"))
-		}
-	}
-	sort.Strings(lines)
-	return strings.Join(lines, "\n")
-}
+var printIf func(ifStmt *ast.IfStmt, falseExpr ...ast.Expr) error
+var sprintResults func(s *brenda.Solver) string
+var sprintNode func(n ast.Node) string
 
 // This is called recursively for the if and all else-if statements. falseExpr
 // is a slice of all the conditions that came before an else-if statement,
 // which must all be false for the else-if to be reached.
-var printIf func(ifStmt *ast.IfStmt, falseExpr ...ast.Expr) error
 printIf = func(ifStmt *ast.IfStmt, falseExpr ...ast.Expr) error {
 
 	s := brenda.NewSolver(fset, info.Uses, ifStmt.Cond, falseExpr...)
@@ -196,10 +166,45 @@ printIf = func(ifStmt *ast.IfStmt, falseExpr ...ast.Expr) error {
 	}
 	return nil
 }
+
+// Helper function to print results
+sprintResults = func(s *brenda.Solver) string {
+	if s.Impossible {
+		// If the expression is impossible
+		return "\t// IMPOSSIBLE"
+	}
+
+	// The results must be sorted to ensure repeatable output
+	var lines []string
+	for expr, result := range s.Components {
+		switch {
+		case result.Match:
+			lines = append(lines, fmt.Sprint("\t// ", printNode(fset, expr), " TRUE"))
+		case result.Inverse:
+			lines = append(lines, fmt.Sprint("\t// ", printNode(fset, expr), " FALSE"))
+		default:
+			lines = append(lines, fmt.Sprint("\t// ", printNode(fset, expr), " UNKNOWN"))
+		}
+	}
+	sort.Strings(lines)
+	return strings.Join(lines, "\n")
+}
+
+// Helper function to print AST nodes
+sprintNode = func(n ast.Node) string {
+	buf := &bytes.Buffer{}
+	err := format.Node(buf, fset, n)
+	if err != nil {
+		return err.Error()
+	}
+	return buf.String()
+}
+
 if err := printIf(ifs); err != nil {
 	fmt.Println(err)
 	return
 }
+
 // Output:
 // if a {
 // 	// a TRUE
