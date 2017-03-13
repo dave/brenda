@@ -24,7 +24,7 @@ import (
 	"os"
 )
 
-func ExampleNew_simple() {
+func ExampleNewSolver_simple() {
 	printExample(`
 		var a bool
 		if a { }
@@ -35,7 +35,7 @@ func ExampleNew_simple() {
 	// }
 }
 
-func ExampleNew_else() {
+func ExampleNewSolver_else() {
 	printExample(`
 		var a bool
 		if a {} else {}
@@ -48,7 +48,7 @@ func ExampleNew_else() {
 	// }
 }
 
-func ExampleNew_and() {
+func ExampleNewSolver_and() {
 	printExample(`
 		var a, b bool
 		if a && b {} else {}
@@ -63,7 +63,7 @@ func ExampleNew_and() {
 	// }
 }
 
-func ExampleNew_unknown() {
+func ExampleNewSolver_unknown() {
 	printExample(`
 		var a, b, c bool
 		if a && (b || c) {} else if b {}
@@ -80,7 +80,7 @@ func ExampleNew_unknown() {
 	// }
 }
 
-func ExampleNew_impossible() {
+func ExampleNewSolver_impossible() {
 	printExample(`
 		var a bool
 		if a {} else if !a {} else {}
@@ -95,7 +95,7 @@ func ExampleNew_impossible() {
 	// }
 }
 
-func ExampleNew_or() {
+func ExampleNewSolver_or() {
 	printExample(`
 		var a, b bool
 		if a || b {} else {}
@@ -110,7 +110,7 @@ func ExampleNew_or() {
 	// }
 }
 
-func ExampleNew_else_if() {
+func ExampleNewSolver_else_if() {
 	printExample(`
 		var a, b bool
 		if a {} else if b {} else {}
@@ -127,7 +127,7 @@ func ExampleNew_else_if() {
 	// }
 }
 
-func ExampleNew_invert() {
+func ExampleNewSolver_invert() {
 	printExample(`
 		// should correctly detect that b == nil is the inverse of b != nil
 		var a, b error
@@ -146,7 +146,7 @@ func ExampleNew_invert() {
 	// }
 }
 
-func ExampleNew_invert_2() {
+func ExampleNewSolver_invert_2() {
 	printExample(`
 		// should correctly detect that a == nil is the inverse of a != nil
 		var a error
@@ -165,7 +165,7 @@ func ExampleNew_invert_2() {
 	// }
 }
 
-func ExampleNew_invert_gt() {
+func ExampleNewSolver_invert_gt() {
 	printExample(`
 		var a int
 		if a > 0 {} else if a <= 0 {} else {}
@@ -180,7 +180,7 @@ func ExampleNew_invert_gt() {
 	// }
 }
 
-func ExampleNew_invert_lt() {
+func ExampleNewSolver_invert_lt() {
 	printExample(`
 		var a int
 		if a < 0 {} else if a >= 0 {} else {}
@@ -195,7 +195,7 @@ func ExampleNew_invert_lt() {
 	// }
 }
 
-func ExampleNew_brackets_1() {
+func ExampleNewSolver_brackets_1() {
 	printExample(`
 		var a, b, c bool
 		if a || (b && c) {} else if a {} else {}
@@ -214,7 +214,7 @@ func ExampleNew_brackets_1() {
 	// }
 }
 
-func ExampleNew_brackets_2() {
+func ExampleNewSolver_brackets_2() {
 	printExample(`
 		var a, b, c bool
 		if a || (b && c) {} else if b {} else {}
@@ -235,7 +235,7 @@ func ExampleNew_brackets_2() {
 	// }
 }
 
-func ExampleNew_brackets_3() {
+func ExampleNewSolver_brackets_3() {
 	printExample(`
 		var a, b, c bool
 		if a && (b || c) {} else if a {} else {}
@@ -256,7 +256,7 @@ func ExampleNew_brackets_3() {
 	// }
 }
 
-func ExampleNew_brackets_4() {
+func ExampleNewSolver_brackets_4() {
 	printExample(`
 		var a, b, c bool
 		if a && (b || c) {} else if b {} else {}
@@ -277,7 +277,7 @@ func ExampleNew_brackets_4() {
 	// }
 }
 
-func ExampleNew_errors() {
+func ExampleNewSolver_errors() {
 	printExample(`
 		var a error
 		if a == nil {} else {}
@@ -290,7 +290,7 @@ func ExampleNew_errors() {
 	// }
 }
 
-func ExampleNew_mixed() {
+func ExampleNewSolver_mixed() {
 	printExample(`
 		var a error
 		var b, c bool
@@ -448,7 +448,7 @@ func unindent(s string) string {
 	return strings.Replace("\n"+s, "\n"+indent, "\n", -1)[1:]
 }
 
-func ExampleNew_usage() {
+func ExampleNewSolver_usage() {
 
 	// A simple source file
 	src := `package foo
@@ -489,7 +489,7 @@ func ExampleNew_usage() {
 		fmt.Println("No *ast.IfStmt found")
 		return
 	}
-	
+
 	var printIf func(ifStmt *ast.IfStmt, falseExpr ...ast.Expr) error
 	var sprintResults func(s *brenda.Solver) string
 	var sprintNode func(n ast.Node) string
