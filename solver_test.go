@@ -505,9 +505,9 @@ func ExampleNewSolver_usage() {
 		return
 	}
 
-	var printIf func(ifStmt *ast.IfStmt, falseExpr ...ast.Expr) error
-	var sprintResults func(s *brenda.Solver) string
-	var sprintNode func(n ast.Node) string
+	var printIf func(*ast.IfStmt, ...ast.Expr) error
+	var sprintResults func(*brenda.Solver) string
+	var sprintNode func(ast.Node) string
 
 	// This is called recursively for the if and all else-if statements. falseExpr
 	// is a slice of all the conditions that came before an else-if statement,
