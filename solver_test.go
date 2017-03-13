@@ -110,6 +110,21 @@ func ExampleNewSolver_or() {
 	// }
 }
 
+func ExampleNewSolver_unary() {
+	printExample(`
+		var a, b bool
+		if !(a || b) {} else {}
+	`)
+	// Output:
+	// if !(a || b) {
+	// 	// a FALSE
+	// 	// b FALSE
+	// } else {
+	// 	// a UNKNOWN
+	// 	// b UNKNOWN
+	// }
+}
+
 func ExampleNewSolver_else_if() {
 	printExample(`
 		var a, b bool

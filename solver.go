@@ -78,7 +78,9 @@ func (s *Solver) SolveFalse() error {
 func (s *Solver) solve(invert bool) error {
 
 	s.initFull(invert)
-	s.initItems(s.full)
+	if err := s.initItems(s.full); err != nil {
+		return err
+	}
 
 	for _, c := range s.items {
 		s.Components[c] = &Result{true, true}
@@ -169,31 +171,36 @@ func (s *Solver) invert(node ast.Expr) ast.Expr {
 	}
 }
 
-func (s *Solver) initItems(node ast.Node) {
-	if node == nil {
-		return
-	}
+func (s *Solver) initItems(node ast.Node) error {
 	switch n := node.(type) {
 	case *ast.BinaryExpr:
 		switch n.Op {
 		case token.LAND, token.LOR:
-			s.initItems(n.X)
-			s.initItems(n.Y)
+			if err := s.initItems(n.X); err != nil {
+				return err
+			}
+			if err := s.initItems(n.Y); err != nil {
+				return err
+			}
 		case token.EQL, token.LSS, token.GTR, token.NEQ, token.LEQ, token.GEQ:
 			s.registerComponent(n)
 		default:
-			fmt.Printf("Unknown BinaryExpr: %s\n", s.sprintNode(node))
 			s.registerComponent(n)
 		}
 	case *ast.UnaryExpr:
-		s.initItems(n.X)
+		if err := s.initItems(n.X); err != nil {
+			return err
+		}
 	case *ast.ParenExpr:
-		s.initItems(n.X)
+		if err := s.initItems(n.X); err != nil {
+			return err
+		}
 	case ast.Expr:
 		s.registerComponent(n)
 	default:
-		panic(fmt.Sprintf("Unknown %T %s", node, s.sprintNode(node)))
+		return fmt.Errorf("Unknown %T %s", node, s.sprintNode(node))
 	}
+	return nil
 }
 
 func (s *Solver) registerComponent(e ast.Expr) {
@@ -251,7 +258,6 @@ func (s *Solver) compare(an, bn ast.Node) bool {
 			return false
 		}
 	default:
-		fmt.Printf("%T %s %s\n", an, s.sprintNode(an), s.sprintNode(bn))
 		return false
 	}
 	return true
@@ -273,7 +279,7 @@ func (s *Solver) execute(ex ast.Expr, inputs map[ast.Expr]bool) bool {
 		case token.NOT:
 			return !s.execute(e.X, inputs)
 		default:
-			panic(fmt.Sprintf("unknown expression %s", s.sprintNode(ex)))
+			panic(fmt.Sprintf("unknown unary expression %s", s.sprintNode(ex)))
 		}
 	case *ast.ParenExpr:
 		return s.execute(e.X, inputs)
@@ -285,7 +291,7 @@ func (s *Solver) execute(ex ast.Expr, inputs map[ast.Expr]bool) bool {
 func (s *Solver) evaluate(ex ast.Expr, inputs map[ast.Expr]bool) bool {
 	use, ok := s.itemUses[ex]
 	if !ok {
-		panic(fmt.Sprintf("unknown component %s", s.sprintNode(ex)))
+		panic(fmt.Sprintf("unknown item %s", s.sprintNode(ex)))
 	}
 	if use.inverted {
 		return !inputs[use.item]
