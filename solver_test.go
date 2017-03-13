@@ -146,7 +146,7 @@ func ExampleNewSolver_invert() {
 	// }
 }
 
-func ExampleNewSolver_invert_2() {
+func ExampleNewSolver_invert2() {
 	printExample(`
 		// should correctly detect that a == nil is the inverse of a != nil
 		var a error
@@ -195,7 +195,7 @@ func ExampleNewSolver_invert_lt() {
 	// }
 }
 
-func ExampleNewSolver_brackets_1() {
+func ExampleNewSolver_brackets1() {
 	printExample(`
 		var a, b, c bool
 		if a || (b && c) {} else if a {} else {}
@@ -214,7 +214,7 @@ func ExampleNewSolver_brackets_1() {
 	// }
 }
 
-func ExampleNewSolver_brackets_2() {
+func ExampleNewSolver_brackets2() {
 	printExample(`
 		var a, b, c bool
 		if a || (b && c) {} else if b {} else {}
@@ -235,7 +235,7 @@ func ExampleNewSolver_brackets_2() {
 	// }
 }
 
-func ExampleNewSolver_brackets_3() {
+func ExampleNewSolver_brackets3() {
 	printExample(`
 		var a, b, c bool
 		if a && (b || c) {} else if a {} else {}
@@ -256,7 +256,7 @@ func ExampleNewSolver_brackets_3() {
 	// }
 }
 
-func ExampleNewSolver_brackets_4() {
+func ExampleNewSolver_brackets4() {
 	printExample(`
 		var a, b, c bool
 		if a && (b || c) {} else if b {} else {}
