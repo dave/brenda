@@ -2,7 +2,7 @@
 
 # Brenda
 
-Brenda is a boolean logic solver.
+Brenda is a boolean expression solver.
 
 Given an AST expression containing an arbitrary combination of `!`, `&&` 
 and `||` expressions, it is possible to solve the boolean state of certain 
