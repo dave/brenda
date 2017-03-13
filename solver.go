@@ -155,9 +155,8 @@ func (s *Solver) invert(node ast.Expr) ast.Expr {
 	} else if id, ok := node.(*ast.Ident); ok && (id.Name == "true" || id.Name == "false") {
 		if id.Name == "true" {
 			return ast.NewIdent("false")
-		} else {
-			return ast.NewIdent("true")
 		}
+		return ast.NewIdent("true")
 	} else if _, ok := node.(*ast.Ident); ok {
 		return &ast.UnaryExpr{
 			Op: token.NOT,
