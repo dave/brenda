@@ -61,7 +61,7 @@ func (s *Solver) initFull(invert bool) {
 			Y:  s.invert(prev),
 		}
 	}
-	strip(out)
+	//strip(out)
 	s.full = out
 }
 

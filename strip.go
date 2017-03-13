@@ -1,10 +1,6 @@
 package brenda
 
-import (
-	"go/ast"
-	"go/token"
-)
-
+/*
 // strip removes all position information from a node and all descendants.
 func strip(node ast.Node) {
 	ast.Inspect(node, func(node ast.Node) bool {
@@ -124,3 +120,4 @@ func strip(node ast.Node) {
 		return true
 	})
 }
+*/
