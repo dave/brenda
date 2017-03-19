@@ -56,6 +56,22 @@ type Result struct {
 }
 
 func (s *Solver) initFull(invert bool) {
+	if s.expr == nil {
+		// if the input expression is false, just return the false expressions
+		if len(s.falseExpr) == 0 {
+			return // panic?
+		}
+		if len(s.falseExpr) == 1 {
+			s.full = s.invert(s.falseExpr[0])
+			return
+		}
+		out := s.invert(s.falseExpr[0])
+		for i := 1; i < len(s.falseExpr); i++ {
+			out = &ast.BinaryExpr{X: out, Y: s.invert(s.falseExpr[i]), Op: token.LAND}
+		}
+		s.full = out
+		return
+	}
 	out := s.expr
 	if invert {
 		out = s.invert(s.expr)
