@@ -20,15 +20,14 @@ import (
 // be the Uses from go/types.Info. expression is the expression to solve.
 // falseExpressions is a slice of expressions we know to be false - e.g. all
 // previous conditions that came before an else-if statement.
-func NewSolver(fset *token.FileSet, info types.Info, expression ast.Expr, falseExpressions ...ast.Expr) *Solver {
+func NewSolver(fset *token.FileSet, uses, defs map[*ast.Ident]types.Object, expression ast.Expr, falseExpressions ...ast.Expr) *Solver {
 	return &Solver{
 		fset:       fset,
 		expr:       expression,
-		info:       info,
 		falseExpr:  falseExpressions,
 		itemUses:   make(map[ast.Expr]use),
 		Components: make(map[ast.Expr]*Result),
-		matcher:    astrid.NewMatcher(info),
+		matcher:    astrid.NewMatcher(uses, defs),
 	}
 }
 
@@ -38,7 +37,6 @@ type Solver struct {
 	expr       ast.Expr             // The main expression that we're analysing
 	full       ast.Expr             // The expression combined with all known false expressions
 	falseExpr  []ast.Expr           // Expressions known to be false (in an else-if statement)
-	info       types.Info           // The types.Info (mist have Uses and Defs completed)
 	items      []ast.Expr           // The individual components of the full expression
 	itemUses   map[ast.Expr]use     // Information about each use of each item in the full expression
 	Components map[ast.Expr]*Result // Components is a map of all the individual components of the expression, and the results

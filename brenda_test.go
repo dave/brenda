@@ -424,7 +424,7 @@ func printOutput(writer io.Writer, src string) error {
 
 func printIf(writer io.Writer, fset *token.FileSet, info types.Info, expr *ast.IfStmt, falseExpr ...ast.Expr) error {
 
-	s := brenda.NewSolver(fset, info, expr.Cond, falseExpr...)
+	s := brenda.NewSolver(fset, info.Uses, info.Defs, expr.Cond, falseExpr...)
 	err := s.SolveTrue()
 	if err != nil {
 		return err
@@ -440,7 +440,7 @@ func printIf(writer io.Writer, fset *token.FileSet, info types.Info, expr *ast.I
 		fmt.Fprintln(writer, "}")
 	case *ast.BlockStmt:
 		// Else block
-		s := brenda.NewSolver(fset, info, expr.Cond, falseExpr...)
+		s := brenda.NewSolver(fset, info.Uses, info.Defs, expr.Cond, falseExpr...)
 		s.SolveFalse()
 		fmt.Fprintln(writer, "} else {")
 		printMatches(writer, fset, s)
@@ -556,7 +556,7 @@ func ExampleNewSolver_usage() {
 	// which must all be false for the else-if to be reached.
 	printIf = func(ifStmt *ast.IfStmt, falseExpr ...ast.Expr) error {
 
-		s := brenda.NewSolver(fset, info, ifStmt.Cond, falseExpr...)
+		s := brenda.NewSolver(fset, info.Uses, info.Defs, ifStmt.Cond, falseExpr...)
 		err := s.SolveTrue()
 		if err != nil {
 			return err
@@ -568,7 +568,7 @@ func ExampleNewSolver_usage() {
 		case *ast.BlockStmt:
 
 			// Else block
-			s := brenda.NewSolver(fset, info, ifStmt.Cond, falseExpr...)
+			s := brenda.NewSolver(fset, info.Uses, info.Defs, ifStmt.Cond, falseExpr...)
 			s.SolveFalse()
 
 			fmt.Printf(" else {\n%s\n}", sprintResults(s))
