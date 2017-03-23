@@ -11,8 +11,8 @@ import (
 	"go/format"
 	"go/token"
 	"go/types"
-	"reflect"
 
+	"github.com/dave/astrid"
 	"github.com/pkg/errors"
 )
 
@@ -20,28 +20,30 @@ import (
 // be the Uses from go/types.Info. expression is the expression to solve.
 // falseExpressions is a slice of expressions we know to be false - e.g. all
 // previous conditions that came before an else-if statement.
-func NewSolver(fset *token.FileSet, uses map[*ast.Ident]types.Object, expression ast.Expr, falseExpressions ...ast.Expr) *Solver {
+func NewSolver(fset *token.FileSet, info types.Info, expression ast.Expr, falseExpressions ...ast.Expr) *Solver {
 	return &Solver{
 		fset:       fset,
 		expr:       expression,
-		uses:       uses,
+		info:       info,
 		falseExpr:  falseExpressions,
 		itemUses:   make(map[ast.Expr]use),
 		Components: make(map[ast.Expr]*Result),
+		matcher:    astrid.NewMatcher(info),
 	}
 }
 
 // Solver solves boolean expressions given the ast.Expr
 type Solver struct {
-	fset       *token.FileSet              // The AST FileSet providing position information
-	expr       ast.Expr                    // The main expression that we're analysing
-	full       ast.Expr                    // The expression combined with all known false expressions
-	falseExpr  []ast.Expr                  // Expressions known to be false (in an else-if statement)
-	uses       map[*ast.Ident]types.Object // The Uses log from go/types.Info
-	items      []ast.Expr                  // The individual components of the full expression
-	itemUses   map[ast.Expr]use            // Information about each use of each item in the full expression
-	Components map[ast.Expr]*Result        // Components is a map of all the individual components of the expression, and the results
-	Impossible bool                        // Impossible is true if this expression is impossible
+	fset       *token.FileSet       // The AST FileSet providing position information
+	expr       ast.Expr             // The main expression that we're analysing
+	full       ast.Expr             // The expression combined with all known false expressions
+	falseExpr  []ast.Expr           // Expressions known to be false (in an else-if statement)
+	info       types.Info           // The types.Info (mist have Uses and Defs completed)
+	items      []ast.Expr           // The individual components of the full expression
+	itemUses   map[ast.Expr]use     // Information about each use of each item in the full expression
+	Components map[ast.Expr]*Result // Components is a map of all the individual components of the expression, and the results
+	Impossible bool                 // Impossible is true if this expression is impossible
+	matcher    *astrid.Matcher
 }
 
 type use struct {
@@ -62,25 +64,25 @@ func (s *Solver) initFull(invert bool) {
 			return // panic?
 		}
 		if len(s.falseExpr) == 1 {
-			s.full = s.invert(s.falseExpr[0])
+			s.full = astrid.Invert(s.falseExpr[0])
 			return
 		}
-		out := s.invert(s.falseExpr[0])
+		out := astrid.Invert(s.falseExpr[0])
 		for i := 1; i < len(s.falseExpr); i++ {
-			out = &ast.BinaryExpr{X: out, Y: s.invert(s.falseExpr[i]), Op: token.LAND}
+			out = &ast.BinaryExpr{X: out, Y: astrid.Invert(s.falseExpr[i]), Op: token.LAND}
 		}
 		s.full = out
 		return
 	}
 	out := s.expr
 	if invert {
-		out = s.invert(s.expr)
+		out = astrid.Invert(s.expr)
 	}
 	for _, prev := range s.falseExpr {
 		out = &ast.BinaryExpr{
 			X:  out,
 			Op: token.LAND,
-			Y:  s.invert(prev),
+			Y:  astrid.Invert(prev),
 		}
 	}
 	// only need to strip position info if we need to pretty-print the node:
@@ -154,52 +156,6 @@ func (s *Solver) solve(invert bool) error {
 	return nil
 }
 
-func (s *Solver) invert(node ast.Expr) ast.Expr {
-	if be, ok := node.(*ast.BinaryExpr); ok && (be.Op == token.NEQ || be.Op == token.EQL || be.Op == token.LSS || be.Op == token.GTR || be.Op == token.LEQ || be.Op == token.GEQ) {
-		/*
-			LSS    // <
-			GTR    // >
-			LEQ      // <=
-			GEQ      // >=
-		*/
-		var op token.Token
-		switch be.Op {
-		case token.NEQ: //    !=
-			op = token.EQL // ==
-		case token.EQL: //    ==
-			op = token.NEQ // !=
-		case token.LSS: //    <
-			op = token.GEQ // >=
-		case token.GTR: //    >
-			op = token.LEQ // <=
-		case token.LEQ: //    <=
-			op = token.GTR // >
-		case token.GEQ: //    >=
-			op = token.LSS // <
-		}
-		return &ast.BinaryExpr{
-			X:  be.X,
-			Op: op,
-			Y:  be.Y,
-		}
-	} else if un, ok := node.(*ast.UnaryExpr); ok && un.Op == token.NOT {
-		return un.X
-	} else if boolTrue(node) {
-		return ast.NewIdent("false")
-	} else if boolFalse(node) {
-		return ast.NewIdent("true")
-	} else if _, ok := node.(*ast.Ident); ok {
-		return &ast.UnaryExpr{
-			Op: token.NOT,
-			X:  node,
-		}
-	}
-	return &ast.UnaryExpr{
-		Op: token.NOT,
-		X:  &ast.ParenExpr{X: node},
-	}
-}
-
 func (s *Solver) initItems(node ast.Node) error {
 	switch n := node.(type) {
 	case *ast.BinaryExpr:
@@ -238,62 +194,17 @@ func (s *Solver) registerItem(e ast.Expr) {
 		return
 	}
 	for _, c := range s.items {
-		if s.compare(c, e) {
+		if s.matcher.Match(c, e) {
 			s.itemUses[e] = use{item: c, inverted: false}
 			return
 		}
-		if s.compare(s.invert(c), e) {
+		if s.matcher.Match(astrid.Invert(c), e) {
 			s.itemUses[e] = use{item: c, inverted: true}
 			return
 		}
 	}
 	s.items = append(s.items, e)
 	s.itemUses[e] = use{item: e, inverted: false}
-}
-
-func (s *Solver) compare(an, bn ast.Node) bool {
-	if reflect.TypeOf(an) != reflect.TypeOf(bn) {
-		return false
-	}
-	switch a := an.(type) {
-	case *ast.BinaryExpr:
-		b := bn.(*ast.BinaryExpr)
-		if a.Op != b.Op {
-			return false
-		}
-		if !s.compare(a.X, b.X) {
-			return false
-		}
-		if !s.compare(a.Y, b.Y) {
-			return false
-		}
-	case *ast.UnaryExpr:
-		b := bn.(*ast.UnaryExpr)
-		if a.Op != b.Op {
-			return false
-		}
-		if !s.compare(a.X, b.X) {
-			return false
-		}
-	case *ast.ParenExpr:
-		b := bn.(*ast.ParenExpr)
-		if !s.compare(a.X, b.X) {
-			return false
-		}
-	case *ast.Ident:
-		b := bn.(*ast.Ident)
-		if s.uses[a] != s.uses[b] {
-			return false
-		}
-	case *ast.BasicLit:
-		b := bn.(*ast.BasicLit)
-		if a.Kind != b.Kind || a.Value != b.Value {
-			return false
-		}
-	default:
-		return false
-	}
-	return true
 }
 
 func (s *Solver) execute(ex ast.Expr, inputs map[ast.Expr]bool) bool {

@@ -387,13 +387,14 @@ func printOutput(writer io.Writer, src string) error {
 		return errors.Wrap(err, "Error parsing file")
 	}
 
-	info := &types.Info{
+	info := types.Info{
 		Uses: make(map[*ast.Ident]types.Object),
+		Defs: make(map[*ast.Ident]types.Object),
 	}
 	conf := types.Config{
 		Importer: importer.Default(),
 	}
-	if _, err = conf.Check(ppath, fset, []*ast.File{f}, info); err != nil {
+	if _, err = conf.Check(ppath, fset, []*ast.File{f}, &info); err != nil {
 		return errors.Wrap(err, "Error checking conf")
 	}
 
@@ -413,7 +414,7 @@ func printOutput(writer io.Writer, src string) error {
 		return errors.New("No *ast.IfStmt found")
 	}
 
-	err = printIf(writer, fset, info.Uses, ifs)
+	err = printIf(writer, fset, info, ifs)
 	if err != nil {
 		return err
 	}
@@ -421,9 +422,9 @@ func printOutput(writer io.Writer, src string) error {
 	return nil
 }
 
-func printIf(writer io.Writer, fset *token.FileSet, uses map[*ast.Ident]types.Object, expr *ast.IfStmt, falseExpr ...ast.Expr) error {
+func printIf(writer io.Writer, fset *token.FileSet, info types.Info, expr *ast.IfStmt, falseExpr ...ast.Expr) error {
 
-	s := brenda.NewSolver(fset, uses, expr.Cond, falseExpr...)
+	s := brenda.NewSolver(fset, info, expr.Cond, falseExpr...)
 	err := s.SolveTrue()
 	if err != nil {
 		return err
@@ -439,7 +440,7 @@ func printIf(writer io.Writer, fset *token.FileSet, uses map[*ast.Ident]types.Ob
 		fmt.Fprintln(writer, "}")
 	case *ast.BlockStmt:
 		// Else block
-		s := brenda.NewSolver(fset, uses, expr.Cond, falseExpr...)
+		s := brenda.NewSolver(fset, info, expr.Cond, falseExpr...)
 		s.SolveFalse()
 		fmt.Fprintln(writer, "} else {")
 		printMatches(writer, fset, s)
@@ -448,7 +449,7 @@ func printIf(writer io.Writer, fset *token.FileSet, uses map[*ast.Ident]types.Ob
 		// Else if statement
 		fmt.Fprint(writer, "} else ")
 		falseExpr = append(falseExpr, expr.Cond)
-		printIf(writer, fset, uses, e, falseExpr...)
+		printIf(writer, fset, info, e, falseExpr...)
 	}
 	return nil
 }
@@ -519,9 +520,12 @@ func ExampleNewSolver_usage() {
 	}
 
 	// We extract type info
-	info := &types.Info{Uses: make(map[*ast.Ident]types.Object)}
+	info := types.Info{
+		Uses: make(map[*ast.Ident]types.Object),
+		Defs: make(map[*ast.Ident]types.Object),
+	}
 	conf := types.Config{Importer: importer.Default()}
-	if _, err = conf.Check("foo", fset, []*ast.File{f}, info); err != nil {
+	if _, err = conf.Check("foo", fset, []*ast.File{f}, &info); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -552,7 +556,7 @@ func ExampleNewSolver_usage() {
 	// which must all be false for the else-if to be reached.
 	printIf = func(ifStmt *ast.IfStmt, falseExpr ...ast.Expr) error {
 
-		s := brenda.NewSolver(fset, info.Uses, ifStmt.Cond, falseExpr...)
+		s := brenda.NewSolver(fset, info, ifStmt.Cond, falseExpr...)
 		err := s.SolveTrue()
 		if err != nil {
 			return err
@@ -564,7 +568,7 @@ func ExampleNewSolver_usage() {
 		case *ast.BlockStmt:
 
 			// Else block
-			s := brenda.NewSolver(fset, info.Uses, ifStmt.Cond, falseExpr...)
+			s := brenda.NewSolver(fset, info, ifStmt.Cond, falseExpr...)
 			s.SolveFalse()
 
 			fmt.Printf(" else {\n%s\n}", sprintResults(s))
