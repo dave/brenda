@@ -117,6 +117,13 @@ func (s *Solver) solve(invert bool) error {
 	for i := 0; i < permutations; i++ {
 		m := make(map[ast.Expr]bool)
 		for j, c := range s.items {
+			/*
+				i is the bitmap of the current scenario e.g. 001001000
+				j is the bit of the current item e.g. 3
+				1<<uint(j) is the bitmap of the current item e.g. 000001000
+				i&(1<<uint(j)) is them AND together.
+				=> 0 if the current item is false, >0 if true.
+			*/
 			r := i&(1<<uint(j)) > 0
 			m[c] = r
 		}
@@ -177,10 +184,9 @@ func (s *Solver) invert(node ast.Expr) ast.Expr {
 		}
 	} else if un, ok := node.(*ast.UnaryExpr); ok && un.Op == token.NOT {
 		return un.X
-	} else if id, ok := node.(*ast.Ident); ok && (id.Name == "true" || id.Name == "false") {
-		if id.Name == "true" {
-			return ast.NewIdent("false")
-		}
+	} else if boolTrue(node) {
+		return ast.NewIdent("false")
+	} else if boolFalse(node) {
 		return ast.NewIdent("true")
 	} else if _, ok := node.(*ast.Ident); ok {
 		return &ast.UnaryExpr{
@@ -227,6 +233,10 @@ func (s *Solver) initItems(node ast.Node) error {
 }
 
 func (s *Solver) registerItem(e ast.Expr) {
+	if boolTrue(e) || boolFalse(e) {
+		// no need to register boolean literals
+		return
+	}
 	for _, c := range s.items {
 		if s.compare(c, e) {
 			s.itemUses[e] = use{item: c, inverted: false}
@@ -312,6 +322,12 @@ func (s *Solver) execute(ex ast.Expr, inputs map[ast.Expr]bool) bool {
 }
 
 func (s *Solver) evaluate(ex ast.Expr, inputs map[ast.Expr]bool) bool {
+	if boolTrue(ex) {
+		return true
+	}
+	if boolFalse(ex) {
+		return false
+	}
 	use, ok := s.itemUses[ex]
 	if !ok {
 		panic(fmt.Sprintf("unknown item %s", s.sprintNode(ex)))
@@ -329,4 +345,18 @@ func (s *Solver) sprintNode(node ast.Node) string {
 		return err.Error()
 	}
 	return buf.String()
+}
+
+func boolTrue(v ast.Expr) bool {
+	if id, ok := v.(*ast.Ident); ok {
+		return id.Obj == nil && id.Name == "true"
+	}
+	return false
+}
+
+func boolFalse(v ast.Expr) bool {
+	if id, ok := v.(*ast.Ident); ok {
+		return id.Obj == nil && id.Name == "false"
+	}
+	return false
 }

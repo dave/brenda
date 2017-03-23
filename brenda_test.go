@@ -17,12 +17,50 @@ import (
 	"sort"
 	"strings"
 
-	"errors"
+	"github.com/pkg/errors"
 
 	"regexp"
 
 	"os"
 )
+
+func ExampleNewSolver_bool_lit_3() {
+	printExample(`
+		var a bool
+		if a && false {} else {}
+	`)
+	// Output:
+	// if a && false {
+	// 	// IMPOSSIBLE
+	// } else {
+	// 	// a UNKNOWN
+	// }
+}
+
+func ExampleNewSolver_bool_lit_2() {
+	printExample(`
+		var a bool
+		if a || true {} else {}
+	`)
+	// Output:
+	// if a || true {
+	// 	// a UNKNOWN
+	// } else {
+	// 	// IMPOSSIBLE
+	// }
+}
+
+func ExampleNewSolver_bool_lit_1() {
+	printExample(`
+		if false {} else {}
+	`)
+	// Output:
+	// if false {
+	// 	// IMPOSSIBLE
+	// } else {
+	//
+	// }
+}
 
 func ExampleNewSolver_simple() {
 	printExample(`
@@ -334,7 +372,7 @@ func ExampleNewSolver_mixed() {
 func printExample(src string) {
 	err := printOutput(os.Stdout, src)
 	if err != nil {
-		panic(err)
+		fmt.Printf("%+v", err)
 	}
 }
 
@@ -346,7 +384,7 @@ func printOutput(writer io.Writer, src string) error {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, fpath, src, parser.ParseComments)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error parsing file")
 	}
 
 	info := &types.Info{
@@ -356,7 +394,7 @@ func printOutput(writer io.Writer, src string) error {
 		Importer: importer.Default(),
 	}
 	if _, err = conf.Check(ppath, fset, []*ast.File{f}, info); err != nil {
-		return err
+		return errors.Wrap(err, "Error checking conf")
 	}
 
 	var ifs *ast.IfStmt
